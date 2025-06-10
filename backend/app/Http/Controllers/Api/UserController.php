@@ -29,14 +29,12 @@ class UserController extends Controller
             'name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users',
             'password' => 'required|string|min:8',
-            'role' => 'required|string|in:admin,user',
         ]);
 
         $user = User::create([
             'name' => $validated['name'],
             'email' => $validated['email'],
             'password' => Hash::make($validated['password']),
-            'role' => $validated['role'],
         ]);
 
         return new UserResource($user);
@@ -68,7 +66,6 @@ class UserController extends Controller
                 Rule::unique('users')->ignore($user->id),
             ],
             'password' => 'sometimes|required|string|min:8',
-            'role' => 'sometimes|required|string|in:admin,user',
         ]);
 
         if (isset($validated['password'])) {
