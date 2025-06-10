@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import axios from "axios";
 import { useForm } from "react-hook-form";
 import { signIn } from "next-auth/react";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -121,10 +122,27 @@ export function AuthForm() {
 
   const onSubmit = async (data: LoginForm | RegisterForm) => {
     setIsLoading(true);
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 2000));
-    console.log("Form submitted:", data);
-    setIsLoading(false);
+    try {
+      if (isLogin) {
+        // Handle Sign In (you can integrate NextAuth or custom auth here)
+        console.log("Login attempt:", data);
+      } else {
+        // Handle Sign Up (Register user)
+        const response = await axios.post("http://localhost:8000/api/users", {
+          username: (data as RegisterForm).username,
+          email: data.email,
+          password: data.password,
+        });
+  
+        console.log("Registration success:", response.data);
+        // Optionally, switch to login mode or show success message
+        setIsLogin(true);
+      }
+    } catch (error: any) {
+      console.error("API error:", error.response?.data || error.message);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleGoogleAuth = async () => {
