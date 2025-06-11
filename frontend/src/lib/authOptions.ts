@@ -8,6 +8,13 @@ export const authOptions: NextAuthOptions = {
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID!,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+      authorization: {
+        params: {
+          prompt: "consent",
+          access_type: "offline",
+          response_type: "code",
+        },
+      },
     }),
     CredentialsProvider({
       name: "Credentials",
@@ -32,11 +39,12 @@ export const authOptions: NextAuthOptions = {
 
           const user = response.data;
 
-          if (user && user.id) {
-            return user;
+          // Simpan token Laravel ke localStorage (client-side only)
+          if (user?.token && typeof window !== "undefined") {
+            localStorage.setItem("laravelToken", user.token);
           }
 
-          return null;
+          return user && user.id ? user : null;
         } catch (error) {
           console.error("Login error:", error);
           return null;
@@ -44,29 +52,51 @@ export const authOptions: NextAuthOptions = {
       },
     }),
   ],
+
   callbacks: {
-    async jwt({ token, user }) {
-      if (user) {
-        token.id = (user as any).id;
-        token.name = user.name;
-        token.email = user.email;
-        token.picture = user.image;
+    async jwt({ token, account }) {
+      console.log("🔥 JWT CALLBACK DIPANGGIL");
+
+      // Handle Google login → exchange Google id_token to Laravel token
+      if (account?.provider === "google" && account.id_token) {
+        try {
+          console.log("🔁 Menukar token Google ke token Laravel...");
+
+          const response = await axios.post(
+            `${process.env.NEXT_PUBLIC_API_URL}/auth/google-exchange`,
+            { token: account.id_token }
+          );
+
+          const laravelToken = response.data.token;
+          console.log("✅ Laravel Token dari backend:", laravelToken);
+
+          // Simpan di token JWT
+          token.laravelToken = laravelToken;
+
+          // Simpan juga di localStorage jika di client
+          if (typeof window !== "undefined") {
+            localStorage.setItem("laravelToken", laravelToken);
+          }
+        } catch (error) {
+          console.error("❌ Gagal menukar token Google:", error);
+        }
       }
+
       return token;
     },
 
     async session({ session, token }) {
-      if (session.user && token.id) {
-        session.user.id = token.id as string;
-        session.user.email = token.email as string;
-        session.user.name = token.name as string;
-        session.user.image = token.picture as string;
+      if (token?.laravelToken) {
+        session.laravelToken = token.laravelToken;
+      } else {
+        console.warn("⚠️ Token.laravelToken tidak ditemukan di JWT token");
       }
       return session;
     },
   },
+
   session: {
-    strategy: 'jwt'
+    strategy: "jwt",
   },
 
   secret: process.env.NEXTAUTH_SECRET,

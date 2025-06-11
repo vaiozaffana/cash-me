@@ -139,7 +139,7 @@ export function AuthForm() {
 
         // Redirect jika berhasil login
         if (response.data.token) {
-          localStorage.setItem("token", response.data.token);
+          localStorage.setItem("laravelToken", response.data.token);
           localStorage.setItem("user", JSON.stringify(response.data.user));
           setUser(response.data.user);
           window.location.href = "/dashboard";
@@ -156,7 +156,7 @@ export function AuthForm() {
         );
 
         console.log("Registration success:", response.data);
-        localStorage.setItem("token", response.data.token);
+        localStorage.setItem("laravelToken", response.data.token);
         localStorage.setItem("user", JSON.stringify(response.data.user));
         setUser(response.data.user);
         window.location.href = "/dashboard";

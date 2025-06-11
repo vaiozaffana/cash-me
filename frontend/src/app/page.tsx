@@ -16,7 +16,7 @@ export default function Home() {
       {/* Footer */}
       <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 text-center">
         <p className="text-xs text-muted-foreground">
-          Secured by blockchain technology
+          Dibuat dengan sepenuh hati
         </p>
       </div>
     </div>

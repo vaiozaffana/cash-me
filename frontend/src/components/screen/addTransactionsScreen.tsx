@@ -1,15 +1,29 @@
 'use client';
 import { useState } from 'react';
-import { ArrowUpDown, Wallet, Calendar, Tag, FileText } from 'lucide-react';
+import { Wallet, Calendar, Tag, FileText, X } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
+import toast from 'react-hot-toast';
+import axios from 'axios';
+
+interface Transaction {
+  id?: number;
+  type: 'income' | 'expense';
+  category: string;
+  amount: number;
+  note?: string;
+  date: string;
+}
 
 export default function AddTransaction() {
   const router = useRouter();
   const [type, setType] = useState<'expense' | 'income'>('expense');
   const [category, setCategory] = useState('');
+  const [customCategory, setCustomCategory] = useState('');
   const [amount, setAmount] = useState('');
   const [note, setNote] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showCustomCategory, setShowCustomCategory] = useState(false);
 
   const categories = {
     expense: [
@@ -18,12 +32,14 @@ export default function AddTransaction() {
       { id: 'electricity', name: 'Listrik' },
       { id: 'health', name: 'Kesehatan' },
       { id: 'transport', name: 'Transportasi' },
+      { id: 'other', name: 'Lainnya' },
     ],
     income: [
       { id: 'salary', name: 'Gaji' },
       { id: 'bonus', name: 'Bonus' },
       { id: 'gift', name: 'Hadiah' },
       { id: 'investment', name: 'Investasi' },
+      { id: 'other', name: 'Lainnya' },
     ],
   };
 
@@ -34,27 +50,96 @@ export default function AddTransaction() {
     'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember',
   ];
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleCategorySelect = (catId: string) => {
+    if (catId === 'other') {
+      setShowCustomCategory(true);
+      setCategory('');
+    } else {
+      setShowCustomCategory(false);
+      setCategory(catId);
+      setCustomCategory('');
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log({ type, category, amount, note });
-    router.push('/dashboard');
+    
+    if (!amount || Number(amount) <= 0) {
+      toast.error('Jumlah harus lebih dari 0');
+      return;
+    }
+    
+    const finalCategory = showCustomCategory ? customCategory : category;
+    if (!finalCategory) {
+      toast.error('Kategori wajib diisi');
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      const transactionData = {
+        type,
+        category: finalCategory,
+        amount: Number(amount),
+        note: note || 'Tidak ada catatan',
+        date: new Date().toISOString()
+      };
+
+      const token = localStorage.getItem('laravelToken');
+      if (!token) {
+        toast.error('Anda harus login terlebih dahulu');
+        router.push('/');
+        return;
+      }
+
+      const response = await axios.post(
+        `${process.env.NEXT_PUBLIC_API_URL}/transactions`,
+        transactionData,
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+
+      if (response.data.status === 'success') {
+        toast.success('Transaksi berhasil ditambahkan');
+        router.push('/dashboard');
+      } else {
+        toast.error(response.data.message || 'Gagal menambahkan transaksi');
+      }
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || 'Terjadi kesalahan saat menambahkan transaksi');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      className="min-h-screen bg-gradient-to-br from-[#0f172a] via-[#1e293b] to-[#0f172a] text-white p-4"
+      className="min-h-screen bg-gradient-to-br from-[#0f172a] via-[#1e293b] to-[#0f172a] text-white p-4 pb-24"
     >
       {/* Header */}
       <header className="mb-6">
-        <motion.h1 
-          initial={{ y: -20 }}
-          animate={{ y: 0 }}
-          className="text-2xl font-bold bg-gradient-to-r from-cyan-400 to-purple-500 bg-clip-text text-transparent"
-        >
-          Tambah Transaksi
-        </motion.h1>
+        <div className="flex justify-between items-center">
+          <motion.h1 
+            initial={{ y: -20 }}
+            animate={{ y: 0 }}
+            className="text-2xl font-bold bg-gradient-to-r from-cyan-400 to-purple-500 bg-clip-text text-transparent"
+          >
+            Tambah Transaksi
+          </motion.h1>
+          <button 
+            onClick={() => router.back()}
+            className="p-2 rounded-full hover:bg-gray-800"
+          >
+            <X size={20} />
+          </button>
+        </div>
         <div className="flex items-center gap-2 mt-2 text-sm text-cyan-200">
           <Calendar size={16} />
           <span>
@@ -63,13 +148,17 @@ export default function AddTransaction() {
         </div>
       </header>
 
-      <form onSubmit={handleSubmit} className="space-y-6">
+      <form onSubmit={handleSubmit} className="space-y-4">
         {/* Tipe Transaksi */}
         <div className="grid grid-cols-2 gap-2 bg-gradient-to-r from-[#1e293b] to-[#1e1b4b] p-1 rounded-lg border border-[#2e3a5b]">
           <motion.button
             whileTap={{ scale: 0.95 }}
             type="button"
-            onClick={() => setType('expense')}
+            onClick={() => {
+              setType('expense');
+              setCategory('');
+              setShowCustomCategory(false);
+            }}
             className={`py-3 rounded-md transition-all ${
               type === 'expense' 
                 ? 'bg-gradient-to-r from-red-500/80 to-purple-600/80' 
@@ -81,7 +170,11 @@ export default function AddTransaction() {
           <motion.button
             whileTap={{ scale: 0.95 }}
             type="button"
-            onClick={() => setType('income')}
+            onClick={() => {
+              setType('income');
+              setCategory('');
+              setShowCustomCategory(false);
+            }}
             className={`py-3 rounded-md transition-all ${
               type === 'income' 
                 ? 'bg-gradient-to-r from-cyan-500/80 to-emerald-600/80' 
@@ -107,6 +200,7 @@ export default function AddTransaction() {
               placeholder="0"
               className="w-full bg-gradient-to-r from-[#1e293b] to-[#1e1b4b] rounded-lg py-3 pl-10 pr-4 text-xl font-medium border border-[#2e3a5b]"
               required
+              min="1"
             />
           </div>
         </div>
@@ -117,23 +211,47 @@ export default function AddTransaction() {
             <Tag size={18} />
             <span>Kategori</span>
           </label>
-          <div className="grid grid-cols-2 gap-2">
-            {categories[type].map((cat) => (
-              <motion.button
-                key={cat.id}
-                whileTap={{ scale: 0.95 }}
+          
+          {showCustomCategory ? (
+            <div className="relative">
+              <input
+                type="text"
+                value={customCategory}
+                onChange={(e) => setCustomCategory(e.target.value)}
+                placeholder="Masukkan kategori baru"
+                className="w-full bg-gradient-to-r from-[#1e293b] to-[#1e1b4b] rounded-lg py-3 px-4 font-medium border border-cyan-400"
+                autoFocus
+              />
+              <button
                 type="button"
-                onClick={() => setCategory(cat.id)}
-                className={`py-3 rounded-lg transition-all border ${
-                  category === cat.id
-                    ? 'border-cyan-400 bg-cyan-500/20'
-                    : 'border-[#2e3a5b] bg-gradient-to-b from-[#1e293b] to-[#1e1b4b]'
-                }`}
+                onClick={() => {
+                  setShowCustomCategory(false);
+                  setCustomCategory('');
+                }}
+                className="absolute right-2 top-1/2 transform -translate-y-1/2 text-cyan-300"
               >
-                {cat.name}
-              </motion.button>
-            ))}
-          </div>
+                <X size={18} />
+              </button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 gap-2">
+              {categories[type].map((cat) => (
+                <motion.button
+                  key={cat.id}
+                  whileTap={{ scale: 0.95 }}
+                  type="button"
+                  onClick={() => handleCategorySelect(cat.id)}
+                  className={`py-3 rounded-lg transition-all border ${
+                    (category === cat.id || (cat.id === 'other' && showCustomCategory))
+                      ? 'border-cyan-400 bg-cyan-500/20'
+                      : 'border-[#2e3a5b] bg-gradient-to-b from-[#1e293b] to-[#1e1b4b]'
+                  }`}
+                >
+                  {cat.name}
+                </motion.button>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Catatan */}
@@ -150,35 +268,29 @@ export default function AddTransaction() {
           />
         </div>
 
-        {/* Informasi Tanggal */}
-        <div className="bg-gradient-to-r from-[#1e293b] to-[#1e1b4b] p-4 rounded-lg border border-[#2e3a5b]">
-          <h3 className="font-medium mb-2 text-cyan-200">Informasi Tanggal</h3>
-          <div className="grid grid-cols-3 gap-2">
-            <div className="space-y-1">
-              <p className="text-xs text-cyan-300">Hari</p>
-              <p className="font-medium">{days[currentDate.getDay()]}</p>
-            </div>
-            <div className="space-y-1">
-              <p className="text-xs text-cyan-300">Tanggal</p>
-              <p className="font-medium">{currentDate.getDate()}</p>
-            </div>
-            <div className="space-y-1">
-              <p className="text-xs text-cyan-300">Bulan</p>
-              <p className="font-medium">{months[currentDate.getMonth()]}</p>
-            </div>
-          </div>
+        {/* Button Group */}
+        <div className="fixed bottom-4 left-0 right-0 px-4 flex gap-3">
+          <motion.button
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            type="button"
+            onClick={() => router.push('/dashboard')}
+            className="w-1/3 bg-gradient-to-r from-[#1e293b] to-[#1e1b4b] py-3 rounded-lg font-medium shadow-lg border border-[#2e3a5b]"
+          >
+            Batal
+          </motion.button>
+          <motion.button
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            type="submit"
+            disabled={isSubmitting}
+            className={`w-2/3 bg-gradient-to-r from-cyan-500 to-purple-600 py-3 rounded-lg font-medium shadow-lg ${
+              isSubmitting ? 'opacity-50 cursor-not-allowed' : ''
+            }`}
+          >
+            {isSubmitting ? 'Menyimpan...' : 'Simpan'}
+          </motion.button>
         </div>
-
-        {/* Submit Button */}
-        <motion.button
-          whileHover={{ scale: 1.02 }}
-          whileTap={{ scale: 0.98 }}
-          type="submit"
-          className="w-full bg-gradient-to-r from-cyan-500 to-purple-600 py-3 rounded-lg font-medium mt-6 shadow-lg"
-          disabled={!amount || !category}
-        >
-          Simpan Transaksi
-        </motion.button>
       </form>
     </motion.div>
   );

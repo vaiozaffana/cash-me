@@ -15,11 +15,18 @@ class UserController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index()
-    {
-        $users = User::all();
-        return new UserCollection($users);
+    public function index(Request $request) {
+        $user = $request->user();
+        if (!$user) {
+            return response()->json(['message' => 'Unauthorized (token invalid)'], 401);
+        }
+
+        return response()->json([
+            'user' => $user,
+            'transactions' => []
+        ]);
     }
+
 
     /**
      * Store a newly created resource in storage.
