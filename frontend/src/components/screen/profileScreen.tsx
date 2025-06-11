@@ -43,7 +43,7 @@ export default function ProfilePage() {
         },
       })
       .then((response: any) => {
-        setTransactions(response.data.transactions); // Sesuaikan dengan struktur dari API Laravel-mu
+        setTransactions(response.data.transactions);
       })
       .catch((error: any) => {
         console.error("Gagal memuat transaksi:", error);
@@ -69,7 +69,7 @@ export default function ProfilePage() {
 
   useEffect(() => {
     if (status === "authenticated") {
-      const token = session?.laravelToken; // Atau apapun nama field token-mu
+      const token = session?.laravelToken;
       console.log("Token Google:", token);
     }
   }, [session, status]);
@@ -229,29 +229,6 @@ export default function ProfilePage() {
 
         {/* Menu */}
         <div className="space-y-3">
-          {/* <motion.button
-            whileTap={{ scale: 0.98 }}
-            onClick={() => setShowEditModal(true)}
-            className="w-full flex items-center gap-3 p-4 bg-gradient-to-r from-[#1e293b] to-[#1e1b4b] rounded-xl border border-[#2e3a5b]"
-          >
-            <div className="text-cyan-300"><Edit size={18} /></div>
-            <span className="flex-1 text-left">Edit Profil</span>
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="m9 18 6-6-6-6"/>
-            </svg>
-          </motion.button> */}
-
-          {/* <motion.button
-            whileTap={{ scale: 0.98 }}
-            onClick={() => router.push('/settings')}
-            className="w-full flex items-center gap-3 p-4 bg-gradient-to-r from-[#1e293b] to-[#1e1b4b] rounded-xl border border-[#2e3a5b]"
-          >
-            <div className="text-cyan-300"><Settings size={18} /></div>
-            <span className="flex-1 text-left">Pengaturan</span>
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="m9 18 6-6-6-6"/>
-            </svg>
-          </motion.button> */}
 
           <motion.button
             whileTap={{ scale: 0.98 }}
