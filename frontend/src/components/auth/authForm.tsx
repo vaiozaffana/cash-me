@@ -24,6 +24,7 @@ import {
   AlertCircle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useUser } from "../UserProvider";
 
 // Validation schemas
 const loginSchema = z.object({
@@ -32,7 +33,7 @@ const loginSchema = z.object({
 });
 
 const registerSchema = z.object({
-  username: z.string().min(3, "Username must be at least 3 characters"),
+  name: z.string().min(3, "Name must be at least 3 characters"),
   email: z.string().email("Please enter a valid email address"),
   password: z
     .string()
@@ -120,26 +121,50 @@ export function AuthForm() {
     }
   }, [passwordValue, isLogin]);
 
+  const { setUser } = useUser();
+
   const onSubmit = async (data: LoginForm | RegisterForm) => {
     setIsLoading(true);
     try {
       if (isLogin) {
-        // Handle Sign In (you can integrate NextAuth or custom auth here)
-        console.log("Login attempt:", data);
+        const response = await axios.post(
+          `${process.env.NEXT_PUBLIC_API_URL}/login`,
+          {
+            email: (data as LoginForm).email,
+            password: (data as LoginForm).password,
+          }
+        );
+
+        console.log("Login success:", response.data);
+
+        // Redirect jika berhasil login
+        if (response.data.token) {
+          localStorage.setItem("token", response.data.token);
+          localStorage.setItem("user", JSON.stringify(response.data.user));
+          setUser(response.data.user);
+          window.location.href = "/dashboard";
+        }
       } else {
         // Handle Sign Up (Register user)
-        const response = await axios.post("http://localhost:8000/api/users", {
-          username: (data as RegisterForm).username,
-          email: data.email,
-          password: data.password,
-        });
-  
+        const response = await axios.post(
+          `${process.env.NEXT_PUBLIC_API_URL}/register`,
+          {
+            name: (data as RegisterForm).name,
+            email: data.email,
+            password: data.password,
+          }
+        );
+
         console.log("Registration success:", response.data);
-        // Optionally, switch to login mode or show success message
+        localStorage.setItem("token", response.data.token);
+        localStorage.setItem("user", JSON.stringify(response.data.user));
+        setUser(response.data.user);
+        window.location.href = "/dashboard";
         setIsLogin(true);
       }
     } catch (error: any) {
       console.error("API error:", error.response?.data || error.message);
+      alert("Login failed: " + (error.response?.data?.message || error.message));
     } finally {
       setIsLoading(false);
     }
@@ -347,17 +372,17 @@ export function AuthForm() {
                     id="username"
                     placeholder="Enter your username"
                     className="pl-10 h-12 glass-effect border-0 focus:ring-2 focus:ring-cyan-500"
-                    {...registerForm.register("username")}
+                    {...registerForm.register("name")}
                   />
                 </div>
-                {registerForm.formState.errors.username && (
+                {registerForm.formState.errors.name && (
                   <motion.p
                     initial={{ opacity: 0, y: -10 }}
                     animate={{ opacity: 1, y: 0 }}
                     className="text-sm text-red-400 flex items-center gap-1"
                   >
                     <AlertCircle className="h-3 w-3" />
-                    {registerForm.formState.errors.username.message}
+                    {registerForm.formState.errors.name.message}
                   </motion.p>
                 )}
               </motion.div>

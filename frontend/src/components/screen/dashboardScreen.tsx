@@ -1,12 +1,29 @@
 'use client';
 import { useSession } from 'next-auth/react';
+import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { ArrowUpDown, Wallet, PieChart, History, Plus } from 'lucide-react';
 import Link from 'next/link';
+import { useUser } from '../UserProvider';
 
 export default function DashboardScreen() {
   const { data: session } = useSession();
-  // Data contoh
+  const { user: localUser } = useUser();
+  const [userName, setUserName] = useState<string | null>(null);
+
+useEffect(() => {
+  if (session?.user) {
+    setUserName(session.user.name || 'Pengguna');
+  } else if (localUser) {
+    setUserName(localUser.name || 'Pengguna');
+  } else {
+    const storedUser = localStorage.getItem("user");
+    if (storedUser) {
+      const user = JSON.parse(storedUser);
+      setUserName(user.name || 'Pengguna');
+    }
+  }
+}, [session, localUser]);
   const balance = 12500;
   const transactions = [
     { id: 1, name: 'Belanja', amount: -150, category: 'Shopping', date: '2023-05-15' },
@@ -25,11 +42,13 @@ export default function DashboardScreen() {
         >
           <div>
             <p className="text-sm text-cyan-200">Selamat datang</p>
-            <h1 className="text-xl font-bold">{session?.user?.name || 'Pengguna'}</h1>
+            <h1 className="text-xl font-bold">{userName || 'Pengguna'}</h1>
           </div>
+          <Link href="/profile">
           <div className="w-10 h-10 rounded-full bg-gradient-to-r from-cyan-500 to-purple-600 flex items-center justify-center">
-            {session?.user?.name?.charAt(0) || 'U'}
+            {userName?.charAt(0) || 'U'}
           </div>
+          </Link>
         </motion.div>
       </header>
 

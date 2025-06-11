@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
@@ -23,23 +24,84 @@ class UserController extends Controller
     /**
      * Store a newly created resource in storage.
      */
-    public function store(Request $request)
+    public function register(Request $request)
     {
-        $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'email' => 'required|string|email|max:255|unique:users',
-            'password' => 'required|string|min:8',
-            'role' => 'required|string|in:admin,user',
-        ]);
+        try {
 
-        $user = User::create([
-            'name' => $validated['name'],
-            'email' => $validated['email'],
-            'password' => Hash::make($validated['password']),
-            'role' => $validated['role'],
-        ]);
+            $validated = $request->validate([
+                'name' => 'required|string|max:255',
+                'email' => 'required|string|email|max:255|unique:users',
+                'password' => 'required|string|min:8',
+            ]);
 
-        return new UserResource($user);
+            $user = User::create([
+                'name' => $validated['name'],
+                'email' => $validated['email'],
+                'password' => Hash::make($validated['password']),
+            ]);
+
+            $token = $user->createToken('authToken')->plainTextToken;
+
+            return response()->json([
+                "status" => "success",
+                "message" => "Registered Successfully",
+                "user" => $user,
+                "token" => $token,
+                "type" => "bearer"
+            ], 200);
+        } catch (\Exception $err) {
+            return response()->json([
+                "status" => "error",
+                "message" => "Something Went Wrong",
+                "error" => $err->getMessage(),
+            ], 500);
+        }
+    }
+
+    public function login(Request $request)
+    {
+
+        try {
+            $request->validate([
+                'email' => 'required|email',
+                'password' => 'required',
+            ]);
+
+            $user = User::where('email', $request->email)->first();
+
+            if (!$user || !Hash::check($request->password, $user->password)) {
+                return response()->json([
+                    'status' => 'error',
+                    'error' => 'Unauthorized',
+                    'message' => 'Invalid login details'
+                ], 401);
+            }
+
+            $token = $user->createToken('authtoken')->plainTextToken;
+
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Login Succesfully',
+                'user' => $user,
+                'token' => $token,
+                'type' => 'bearer'
+            ], 200);
+        } catch (\Exception $err) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Something went wrong',
+                'error' => $err->getMessage()
+            ], 500);
+        }
+    }
+
+    public function logout(Request $request) {
+        $request->user()->currentAccessToken()->delete();
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'User logged is successfully',
+        ]);
     }
 
     /**
@@ -56,7 +118,7 @@ class UserController extends Controller
     public function update(Request $request, $id)
     {
         $user = User::findOrFail($id);
-        
+
         $validated = $request->validate([
             'name' => 'sometimes|required|string|max:255',
             'email' => [
@@ -68,7 +130,6 @@ class UserController extends Controller
                 Rule::unique('users')->ignore($user->id),
             ],
             'password' => 'sometimes|required|string|min:8',
-            'role' => 'sometimes|required|string|in:admin,user',
         ]);
 
         if (isset($validated['password'])) {
